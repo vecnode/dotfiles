@@ -3,7 +3,8 @@
 set -Eeuo pipefail
 
 readonly SCRIPT_NAME="${0##*/}"
-REPO_DIR="${REPO_DIR:-$HOME/dotfiles}"
+# Default repo root = directory containing this script (works for ~/dotfiles, ~/.dotfiles, etc.)
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
 
 # Set once at startup by detect_target_os() — use these for all install decisions.
 DOTFILES_OS_KERNEL=""
@@ -75,7 +76,7 @@ is_arch() {
 require_directory() {
   local path=$1
   if [[ ! -d $path ]]; then
-    fail "Expected directory does not exist: ${path} (set REPO_DIR to your clone path)"
+    fail "Expected directory does not exist: ${path} (set REPO_DIR, or invoke install.sh from inside the repo)"
   fi
 }
 
