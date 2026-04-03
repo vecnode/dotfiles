@@ -13,7 +13,7 @@ DOTFILES_TARGET_OS=""
 
 # Arch package list — add entries here as needed.
 readonly -a ARCH_PACKAGES=(
-  vim
+  btop
   firefox
   konsole
 )

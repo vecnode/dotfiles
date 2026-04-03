@@ -17,23 +17,3 @@ set expandtab
 set autoindent
 set smartindent
 
-" Search
-set ignorecase
-set smartcase
-set incsearch
-set hlsearch
-
-" Files
-set hidden
-set undofile
-set undodir=~/.vim/undo
-set backupdir=~/.vim/backup
-set directory=~/.vim/swap
-
-" Colors
-set termguicolors
-
-" Mappings (default <leader> is \)
-nnoremap <leader>w :w<CR>
-nnoremap <leader>q :q<CR>
-inoremap jk <Esc>
