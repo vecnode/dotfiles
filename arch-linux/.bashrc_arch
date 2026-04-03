@@ -1,0 +1,11 @@
+# ~/.bashrc_arch - Arch Linux shell extras (sourced from common .bashrc)
+
+# Prefer Firefox for GUI apps that respect BROWSER
+export BROWSER=firefox
+
+# pacman / system helpers
+alias pacup='sudo pacman -Syu'
+alias pacs='sudo pacman -S'
+alias pacq='pacman -Q'
+alias pacqi='pacman -Qi'
+alias journal='journalctl -xe'

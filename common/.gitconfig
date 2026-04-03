@@ -1,0 +1,10 @@
+[user]
+  name = vecnode
+  email = vecnode@users.noreply.github
+
+[core]
+  editor = vim
+  autocrlf = input
+
+[color]
+  ui = auto
