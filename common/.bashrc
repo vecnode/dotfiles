@@ -32,8 +32,12 @@ if [ -d "$HOME/.local/bin" ]; then
   PATH="$HOME/.local/bin:$PATH"
 fi
 
-# OS-specific overlay (e.g. arch-linux → ~/.bashrc_arch)
+# OS-specific overlay (arch-linux → ~/.bashrc_arch, ubuntu-linux → ~/.bashrc_ubuntu)
 if [ -f "$HOME/.bashrc_arch" ]; then
   # shellcheck source=/dev/null
   . "$HOME/.bashrc_arch"
+fi
+if [ -f "$HOME/.bashrc_ubuntu" ]; then
+  # shellcheck source=/dev/null
+  . "$HOME/.bashrc_ubuntu"
 fi

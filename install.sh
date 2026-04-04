@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dotfiles installer: packages (Arch) + symlinks from this repo into $HOME.
+# Dotfiles installer: packages (OS-specific) + symlinks from this repo into $HOME.
 set -Eeuo pipefail
 
 readonly SCRIPT_NAME="${0##*/}"
@@ -9,13 +9,19 @@ REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
 # Set once at startup by detect_target_os() — use these for all install decisions.
 DOTFILES_OS_KERNEL=""
 DOTFILES_OS_ID=""
+DOTFILES_OS_ID_LIKE=""
 DOTFILES_TARGET_OS=""
 
-# Arch package list — add entries here as needed.
-readonly -a ARCH_PACKAGES=(
+# Package lists — add entries here as needed. COMMON_PACKAGES are installed on every OS that has an installer below.
+readonly -a COMMON_PACKAGES=(
   btop
   firefox
   konsole
+)
+readonly -a ARCH_PACKAGES=(
+)
+readonly -a UBUNTU_PACKAGES=(
+  inkscape
 )
 
 log_info() { printf '[%s] %s\n' "$SCRIPT_NAME" "$*"; }
@@ -44,6 +50,7 @@ detect_target_os() {
         # shellcheck source=/dev/null
         . /etc/os-release
         DOTFILES_OS_ID="${ID:-unknown}"
+        DOTFILES_OS_ID_LIKE="${ID_LIKE:-}"
         if [[ $DOTFILES_OS_ID == arch ]]; then
           DOTFILES_TARGET_OS="arch-linux"
         else
@@ -64,13 +71,18 @@ detect_target_os() {
       ;;
   esac
 
-  export DOTFILES_OS_KERNEL DOTFILES_OS_ID DOTFILES_TARGET_OS
+  export DOTFILES_OS_KERNEL DOTFILES_OS_ID DOTFILES_OS_ID_LIKE DOTFILES_TARGET_OS
 }
 
 detect_target_os
 
 is_arch() {
   [[ ${DOTFILES_OS_ID:-} == arch ]]
+}
+
+# True for Ubuntu and Ubuntu-based distros (Pop!_OS, Mint, etc. list "ubuntu" in ID_LIKE).
+is_ubuntu() {
+  [[ ${DOTFILES_OS_ID:-} == ubuntu ]] || [[ ${DOTFILES_OS_ID_LIKE:-} == *ubuntu* ]]
 }
 
 require_directory() {
@@ -89,7 +101,7 @@ require_file() {
 
 check_sudo() {
   if ! command -v sudo >/dev/null 2>&1; then
-    fail "sudo is not installed or not in PATH; cannot install packages on Arch."
+    fail "sudo is not installed or not in PATH; cannot install packages."
   fi
   if ! sudo -v; then
     fail "sudo authentication failed; cannot install packages."
@@ -97,11 +109,32 @@ check_sudo() {
 }
 
 install_arch_packages() {
-  log_info "Installing Arch packages (pacman): ${ARCH_PACKAGES[*]}"
-  if ! sudo pacman -S --noconfirm --needed "${ARCH_PACKAGES[@]}"; then
+  local -a to_install=("${COMMON_PACKAGES[@]}" "${ARCH_PACKAGES[@]}")
+  if [[ ${#to_install[@]} -eq 0 ]]; then
+    log_info "No packages to install via pacman."
+    return
+  fi
+  log_info "Installing packages (pacman): ${to_install[*]}"
+  if ! sudo pacman -S --noconfirm --needed "${to_install[@]}"; then
     fail "pacman failed. Inspect the error output above (mirrors, disk space, keys)."
   fi
   log_info "Arch packages installed or already satisfied."
+}
+
+install_ubuntu_packages() {
+  local -a to_install=("${COMMON_PACKAGES[@]}" "${UBUNTU_PACKAGES[@]}")
+  if [[ ${#to_install[@]} -eq 0 ]]; then
+    log_info "No packages to install via apt."
+    return
+  fi
+  log_info "Installing packages (apt): ${to_install[*]}"
+  if ! sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq; then
+    fail "apt-get update failed. Inspect the error output above (network, repositories)."
+  fi
+  if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${to_install[@]}"; then
+    fail "apt-get install failed. Inspect the error output above (missing packages, disk space)."
+  fi
+  log_info "Ubuntu packages installed or already satisfied."
 }
 
 ensure_vim_dirs() {
@@ -139,7 +172,7 @@ link_into_home() {
 main() {
   [[ -n ${REPO_DIR:-} ]] || fail "REPO_DIR is empty; set it to the absolute path of this repository."
 
-  log_info "Installing for target OS: ${DOTFILES_TARGET_OS} (kernel=${DOTFILES_OS_KERNEL}, os-id=${DOTFILES_OS_ID})"
+  log_info "Installing for target OS: ${DOTFILES_TARGET_OS} (kernel=${DOTFILES_OS_KERNEL}, os-id=${DOTFILES_OS_ID}${DOTFILES_OS_ID_LIKE:+, id_like=${DOTFILES_OS_ID_LIKE}})"
 
   require_directory "$REPO_DIR"
 
@@ -150,8 +183,11 @@ main() {
   if is_arch; then
     check_sudo
     install_arch_packages
+  elif is_ubuntu; then
+    check_sudo
+    install_ubuntu_packages
   else
-    log_info "Not Arch Linux (DOTFILES_TARGET_OS=${DOTFILES_TARGET_OS}); skipping pacman package installation."
+    log_info "No package recipe for this OS (os-id=${DOTFILES_OS_ID}, id_like=${DOTFILES_OS_ID_LIKE:-n/a}); skipping package installation."
   fi
 
   ensure_vim_dirs
@@ -163,6 +199,11 @@ main() {
   if is_arch; then
     require_file "$REPO_DIR/arch-linux/.bashrc_arch"
     link_into_home "arch-linux/.bashrc_arch" ".bashrc_arch"
+  fi
+
+  if is_ubuntu; then
+    require_file "$REPO_DIR/ubuntu-linux/.bashrc_ubuntu"
+    link_into_home "ubuntu-linux/.bashrc_ubuntu" ".bashrc_ubuntu"
   fi
 
   log_info "Dotfiles installed successfully."
